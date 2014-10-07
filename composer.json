@@ -1,5 +1,6 @@
 {
-    "name": "SUQLD/OtrsApi",
+    "name": "suqld/otrs-api",
+    "type": "library",
     "description": "OTRS API SOAP Library",
     "minimum-stability": "stable",
     "license": "LGPL-3.0",
