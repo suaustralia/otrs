@@ -1,0 +1,11 @@
+{
+    "name": "SUQLD/OtrsApi",
+    "description": "OTRS API SOAP Library",
+    "minimum-stability": "stable",
+    "license": "LGPL-3.0",
+    "autoload" : {
+        "psr-4": {
+            "SUQLD\\": "src/SUQLD/"
+        }
+    }
+}
