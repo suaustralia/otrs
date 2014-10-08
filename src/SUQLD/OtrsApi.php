@@ -26,7 +26,7 @@ class OtrsApi
      */
     public function Client($URI = 'Core')
     {
-        $this->client = new SoapClient(
+        $this->client = new \SoapClient(
             null, [
                 'location' => $this->url,
                 'uri' => $URI,
