@@ -141,7 +141,7 @@ class OtrsApi
         return $this->send($request);
     }
 
-    public function attachArticle(
+    public function addArticle(
         $ticketID,
         $createdBy,
         $userID,
