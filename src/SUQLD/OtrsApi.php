@@ -56,7 +56,7 @@ class OtrsApi
     /**
      * Send the data to the Ticket System and process the response
      */
-    public function send($requestData)
+    private function send($requestData)
     {
         try {
             array_unshift(
@@ -77,7 +77,7 @@ class OtrsApi
             }
 
             return $result;
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             // This is not how we should handle an exception
             return false;
         }
@@ -85,164 +85,137 @@ class OtrsApi
     }
 
     /**
-     * Conversion of default with supplied data
-     */
-    public function createData($defaults, $columns = [], $updateData = [])
-    {
-        $request = $defaults;
-
-        foreach ($columns as $column) {
-            if (isset($updateData[$column])) {
-                $request[$column] = $updateData[$column];
-            }
-        }
-
-        return $request;
-    }
-
-    /**
      * Create a new ticket
      */
-    public function createTicket($updateData, $createdBy)
+    public function createTicket(
+        $title,
+        $queue = null,
+        $queueID = null,
+        $customerUser = null,
+        $customerID = null,
+        $lockState = 'Unlock',
+        $priorityID = 2,
+        $state = 'new',
+        $ownerID = 1,
+        $userID = 1
+        )
     {
-        $send_request = true;
-
-        $defaults = [
-            "TicketObject" => "TicketCreate",
-            "Lock" => "Unlock",
-            "PriorityID" => 2,
-            "State" => "new",
-            "OwnerID" => 1,
-            "UserID" => 1,
-        ];
-
-        $columns = [
-            'Title',
-            'Queue',
-            'QueueID',
-            'Lock',
-            'Priority',
-            'PriorityID',
-            'State',
-            'StateID',
-            'Type',
-            'TypeID',
-            'Service',
-            'ServiceID ',
-            'SLA',
-            'SLAID',
-            'CustomerID',
-            'CustomerUser',
-            'OwnerID',
-            'ResponsibleID',
-            'ArchiveFlag',
-            'UserID'
-        ];
-
-        $request = $this->createData($defaults, $columns, $updateData);
-
-        if (!$updateData['Title']) {
-            $send_request = false;
-            $this->log[] = 'Title is empty.';
+        if (strlen(trim($title)) == 0) {
+            throw new \Exception('Need a title. Title is empty');
         }
-        if (!$updateData['Queue'] && !$updateData['QueueID']) {
-            $send_request = false;
-            $this->log[] = 'Queue/QueueID is empty.';
+        if (!$queue && !$queueID) {
+            throw new \Exception('Queue/QueueID is empty');
         }
-        if (!$updateData['CustomerUser'] && !$updateData['CustomerID']) {
-            $send_request = false;
-            $this->log[] = 'CustomerID or CustomerUser is empty.';
-        }
-        if (!$send_request) {
-            return false;
+        if (!$customerUser && !$customerID) {
+            throw new \Exception('CustomerID or CustomerUser is empty');
         }
 
-        $ticket_id = $this->send($request);
-        if ($ticket_id) {
-            $defaults = [
-                "TicketObject" => "ArticleCreate",
-                "TicketID" => $ticket_id,
-                "ArticleType" => "webrequest",
-                "SenderType" => "system",
-                "HistoryType" => "WebRequestCustomer",
-                "HistoryComment" => $createdBy,
-                "ContentType" => "text/plain; charset=ISO-8859-1",
-                "UserID" => 1,
-                "Loop" => 0,
-                "AutoResponseType" => 'auto reply',
-                "OrigHeader" => [
-                    'From' => $updateData['From'],
-                    'To' => 'Postmaster',
-                    'Subject' => $updateData['Title'],
-                    'Body' => $updateData['Body'],
-                ],
-            ];
-            $columns = [
-                'From',
-                'Title',
-                'Body',
-            ];
-            $request = $this->createData($defaults, $columns, $updateData);
-            $ArticleID = $this->send($request);
+        $request = array(
+            "TicketObject", "TicketCreate",
+            "Title", $title,
+            "Lock", $lockState,
+            "PriorityID", $priorityID,
+            "State", $state,
+            "OwnerID", $ownerID,
+            "UserID", $userID
+        );
+
+        if ($queueID) {
+            $request[] = "QueueID";
+            $request[] = $queueID;
+        } else {
+            $request[] = "Queue";
+            $request[] = $queue;
         }
 
-        return $ticket_id;
+        if ($customerID) {
+            $request[] = "CustomerID";
+            $request[] = $customerID;
+        }
+        if ($customerUser) {
+            $request[] = "CustomerUser";
+            $request[] = $customerUser;
+        }
+
+        // Returns the TicketID
+        return $this->send($request);
     }
 
-    /**
-     * Add a note to the ticket
-     */
-    public function addNote($TicketID, $updateData, $createdBy)
+    public function attachArticle(
+        $ticketID,
+        $createdBy,
+        $userID,
+        $subject,
+        $body,
+        $articleType = 'webrequest',
+        $from = null,
+        $contentType = 'text/plain; charset=ISO-8859-1'
+    )
     {
-        $send_request = true;
 
-        $defaults = [
-            "TicketObject" => "ArticleCreate",
-            "TicketID" => $TicketID,
-            "ArticleType" => "note-internal",
-            "SenderType" => "system",
-            "HistoryType" => "WebRequestCustomer",
-            "HistoryComment" => $createdBy,
-            "ContentType" => "text/plain; charset=ISO-8859-1",
-            "UserID" => 1,
-            "Loop" => 0,
-            "NoAgentNotify" => 1
-        ];
-
-        $columns = [
-            'Subject',
-            'Body',
-            'NoAgentNotify',
-            'ArticleType',
-        ];
-
-        if (!$updateData['Subject']) {
-            $send_request = false;
-            $this->log[] = 'Subject is empty.';
+        if (strlen(trim($subject)) == 0) {
+            throw new \Exception('Need a subject. Subject is empty');
+        }
+        if (strlen(trim($body)) == 0) {
+            throw new \Exception('Need a body. Body is empty');
+        }
+        if (strlen(trim($articleType)) == 0) {
+            throw new \Exception('Article Type can not be empty.');
+        }
+        if (!is_int($ticketID)) {
+            throw new \Exception('TicketID needs to be an integer');
         }
 
-        if (!$updateData['Body']) {
-            $send_request = false;
-            $this->log[] = 'Body is empty.';
+        $request =  [
+            "TicketObject", "ArticleCreate",
+            "TicketID", $ticketID,
+            "ArticleType", $articleType,
+            "SenderType", "system",
+            "HistoryType", "WebRequestCustomer",
+            "HistoryComment", $createdBy,
+            "Subject", $subject,
+            "ContentType", $contentType,
+            "Body", $body,
+            "UserID", $userID,
+
+            ];
+
+        switch ($articleType) {
+            case 'note-internal':
+                $request = array_merge($request, [
+                    "NoAgentNotify", 1,
+                ]);
+                break;
+            case 'webrequest':
+                $request = array_merge($request, [
+                    "Loop", 0,
+                    "From", $from,
+                    "AutoResponseType", 'auto reply',
+                    "OrigHeader", [
+                        'From' => $from,
+                        'To' =>  'Postmaster',
+                        'Subject' => $subject,
+                        'Body' => $body,
+                    ]
+                ]);
+                break;
         }
 
-        if ($send_request) {
-            $request = $this->createData($defaults, $columns, $updateData);
-            $ArticleID = $this->send($request);
-        }
+        $articleID = $this->send($request);
+
+        return $articleID;
     }
 
     /**
      * Get the Ticket Number
      */
-    public function number($TicketID)
+    public function getTicketNumber($TicketID)
     {
-        $defaults = [
-            'TicketObject' => 'TicketNumberLookup',
-            'TicketID' => $TicketID,
+        $request = [
+            'TicketObject', 'TicketNumberLookup',
+            'TicketID', $TicketID,
         ];
 
-        $request = $this->createData($defaults);
         $TicketNumber = $this->send($request);
 
         $TicketNumber = number_format($TicketNumber, 0, '.', '');
@@ -253,64 +226,28 @@ class OtrsApi
     /**
      * Get the database TicketID
      */
-    public function id($TicketNumber)
+    public function getID($TicketNumber)
     {
-        $defaults = [
-            'TicketObject' => 'TicketIDLookup',
-            'TicketNumber' => $TicketNumber,
+        $request = [
+            'TicketObject', 'TicketIDLookup',
+            'TicketNumber', $TicketNumber,
         ];
 
-        $request = $this->createData($defaults);
         $TicketID = $this->send($request);
 
         return $TicketID;
     }
 
     /**
-     * Retrieve a ticket subject
-     */
-    public function outgoingSubject($TicketNumber, $updateData)
-    {
-        $send_request = true;
-
-        $defaults = [
-            'TicketObject' => 'TicketSubjectBuild',
-            'TicketNumber' => $TicketNumber,
-        ];
-
-        $columns = [
-            'Subject',
-            'Action',
-            'Type',
-            'NoCleanup',
-        ];
-
-        if (!$updateData['Subject']) {
-            $send_request = false;
-            $this->log[] = 'Subject is empty.';
-        }
-
-        if ($send_request) {
-            $request = $this->createData($defaults, $columns, $updateData);
-            $subject = $this->send($request);
-            return $subject;
-        } else {
-            return false;
-        }
-    }
-
-
-    /**
      * Get Ticket Information
      */
-    public function get($TicketID, $Extended = false)
+    public function getTicket($TicketID, $Extended = false)
     {
-        $defaults = [
-            'TicketObject' => 'TicketGet',
-            'TicketID' => $TicketID,
-            'Extended' => (int)$Extended,
+        $request = [
+            'TicketObject' , 'TicketGet',
+            'TicketID', $TicketID,
+            'Extended', (int)$Extended,
         ];
-        $request = $this->createData($defaults);
         $body = $this->send($request);
         return $body;
     }
@@ -319,21 +256,21 @@ class OtrsApi
     /**
      * Move a Ticket to a queue
      */
-    public function move($TicketID, $Queue, $UserID = 1)
+    public function moveTicket($TicketID, $Queue, $UserID = 1)
     {
-        $defaults = [
-            'TicketObject' => 'TicketQueueSet',
-            'TicketID' => $TicketID,
-            'UserID' => $UserID,
+        $request = [
+            'TicketObject', 'TicketQueueSet',
+            'TicketID', $TicketID,
+            'UserID', $UserID,
         ];
 
         if (is_int($Queue)) {
-            $defaults['QueueID'] = $Queue;
+            $request[] = 'QueueID';
+            $request[] = $Queue;
         } else {
-            $defaults['Queue'] = $Queue;
+            $request[] = 'Queue';
+            $request[] = $Queue;
         }
-
-        $request = $this->createData($defaults);
         $success = $this->send($request);
         return $success;
     }
