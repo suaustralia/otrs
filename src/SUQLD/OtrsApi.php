@@ -207,6 +207,24 @@ class OtrsApi
     }
 
     /**
+     * Attach file to ticket
+     */
+
+    public function attachFileToArticle($articleID, $filePath, $fileName, $mimeType)
+    {
+        $request = array(
+            "TicketObject", "ArticleWriteAttachment",
+            "Content", new \SoapVar(file_get_contents($filePath),XSD_BASE64BINARY, 'xsd:base64Binary'),
+            "ContentType", $mimeType,
+            "Filename", $fileName,
+            "ArticleID", $articleID,
+            "UserID", 1
+        );
+
+        return $this->send($request);
+    }
+
+    /**
      * Get the Ticket Number
      */
     public function getTicketNumber($TicketID)
