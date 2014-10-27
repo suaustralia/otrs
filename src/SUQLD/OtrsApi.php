@@ -93,7 +93,7 @@ class OtrsApi
         $queueID = null,
         $customerUser = null,
         $customerID = null,
-        $lockState = 'Unlock',
+        $lockState = 'unlock',
         $priorityID = 2,
         $state = 'new',
         $ownerID = 1,
