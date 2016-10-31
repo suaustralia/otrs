@@ -293,4 +293,34 @@ class OtrsApi
         return $success;
     }
 
+    public function getTicketState($TicketID)
+    {
+        $ticket = $this->getTicket($TicketID);
+        return $ticket['State'];
+    }
+
+    /**
+     * @param int $TicketID
+     * @param string|int $State The name of a state, or a state ID
+     * @return bool $success
+     */
+    public function setTicketState($TicketID, $State)
+    {
+        $request = [
+            'TicketObject', 'TicketStateSet',
+            'TicketID', $TicketID,
+            'UserID', 1
+        ];
+
+        if (is_int($State)) {
+            $request[] = 'StateID';
+        } else {
+            $request[] = 'State';
+        }
+        $request[] = $State;
+
+        $success = $this->send($request);
+        return (bool)$success;
+    }
+
 } 
